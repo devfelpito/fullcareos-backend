@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////
+// EMPRESA
+//////////////////////
+model Company {
+  id            String   @id @default(uuid())
+  name          String
+  cnpj          String?
+  email         String
+  phone         String
+  address       String
+  plan          String   @default("trial")
+  trialEndsAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  users         User[]
+  roles         Role[]
+  clients       Client[]
+  vehicles      Vehicle[]
+  services      Service[]
+  appointments  Appointment[]
+  sales         Sale[]
+  expenses      Expense[]
+}
+
+//////////////////////
+// USUÁRIOS E CARGOS
+//////////////////////
+model User {
+  id          String   @id @default(uuid())
+  companyId   String
+  roleId      String
+  name        String
+  email       String   @unique
+  password    String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  company     Company  @relation(fields: [companyId], references: [id])
+  role        Role     @relation(fields: [roleId], references: [id])
+
+  auditLogs   AuditLog[]
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String
+  description String?
+
+  company     Company  @relation(fields: [companyId], references: [id])
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  id            String      @id @default(uuid())
+  roleId        String
+  permissionId  String
+
+  role          Role        @relation(fields: [roleId], references: [id])
+  permission    Permission  @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+}
+
+//////////////////////
+// AUDITORIA
+//////////////////////
+model AuditLog {
+  id          String   @id @default(uuid())
+  companyId   String
+  userId      String
+  action      String
+  module      String
+  beforeData  Json?
+  afterData   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+//////////////////////
+// CLIENTES
+//////////////////////
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  companyId String
+  createdAt DateTime @default(now())
+
+  company   Company  @relation(fields: [companyId], references: [id])
+  vehicles  Vehicle[]
+  appointments Appointment[]
+  sales     Sale[]
+}
+
+//////////////////////
+// VEÍCULOS
+//////////////////////
+model Vehicle {
+  id        String   @id @default(uuid())
+  clientId  String
+  companyId String
+  model     String
+  plate     String
+  createdAt DateTime @default(now())
+
+  client    Client   @relation(fields: [clientId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id])
+  appointments Appointment[]
+}
+
+//////////////////////
+// SERVIÇOS
+//////////////////////
+model Service {
+  id        String   @id @default(uuid())
+  name      String
+  price     Float
+  duration  Int       // duração em minutos
+  companyId String
+  createdAt DateTime @default(now())
+
+  company   Company @relation(fields: [companyId], references: [id])
+  appointments Appointment[]
+  sales     Sale[]
+}
+
+//////////////////////
+// AGENDAMENTOS
+//////////////////////
+model Appointment {
+  id          String   @id @default(uuid())
+  companyId   String
+  clientId    String
+  vehicleId   String?
+  serviceId   String
+  scheduledAt DateTime
+  createdAt   DateTime @default(now())
+
+  company     Company  @relation(fields: [companyId], references: [id])
+  client      Client   @relation(fields: [clientId], references: [id])
+  vehicle     Vehicle? @relation(fields: [vehicleId], references: [id])
+  service     Service  @relation(fields: [serviceId], references: [id])
+}
+
+
+//////////////////////
+// VENDAS
+//////////////////////
+model Sale {
+  id            String   @id @default(uuid())
+  companyId     String
+  clientId      String
+  serviceId     String
+  amount        Float
+  paymentMethod String
+  createdAt     DateTime @default(now())
+
+  company       Company  @relation(fields: [companyId], references: [id])
+  client        Client   @relation(fields: [clientId], references: [id])
+  service       Service  @relation(fields: [serviceId], references: [id])
+}
+
+
+//////////////////////
+// DESPESAS
+//////////////////////
+model Expense {
+  id          String   @id @default(uuid())
+  companyId   String
+  description String
+  amount      Float
+  createdAt   DateTime @default(now())
+
+  company     Company @relation(fields: [companyId], references: [id])
+}
