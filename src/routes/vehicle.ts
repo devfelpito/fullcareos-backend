@@ -1,27 +1,33 @@
 import { Router } from "express";
-import { prisma } from "../prisma"; 
-import  authMiddleware from "../middleware/auth";
+import authMiddleware from "../middleware/auth";
+import tenantMiddleware from "../middleware/tenant";
+import { tenantPrisma } from "../utils/tenantPrisma";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(tenantMiddleware);
 
-// LISTAR VEÍCULOS
-router.get("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const vehicles = await prisma.vehicle.findMany({ where: { companyId } });
-  res.json(vehicles);
+router.get("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const vehicles = await tprisma.vehicle.findMany({});
+    res.json(vehicles);
+  } catch (err) {
+    next(err);
+  }
 });
 
-// CRIAR VEÍCULO
-router.post("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const { clientId, model, plate } = req.body;
-
-  const vehicle = await prisma.vehicle.create({
-    data: { clientId, model, plate, companyId }
-  });
-  res.json(vehicle);
+router.post("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const { clientId, model, plate } = req.body;
+    const vehicle = await tprisma.vehicle.create({
+      data: { clientId, model, plate }
+    });
+    res.json(vehicle);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
-module.exports = router;

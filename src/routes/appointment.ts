@@ -1,28 +1,33 @@
 import { Router } from "express";
-import { prisma } from "../prisma"; 
-import  authMiddleware from "../middleware/auth";
+import authMiddleware from "../middleware/auth";
+import tenantMiddleware from "../middleware/tenant";
+import { tenantPrisma } from "../utils/tenantPrisma";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(tenantMiddleware);
 
-// LISTAR AGENDAMENTOS
-router.get("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const appointments = await prisma.appointment.findMany({ where: { companyId } });
-  res.json(appointments);
+router.get("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const appointments = await tprisma.appointment.findMany({});
+    res.json(appointments);
+  } catch (err) {
+    next(err);
+  }
 });
 
-// CRIAR AGENDAMENTO
-router.post("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const { clientId, vehicleId, serviceId, scheduledAt } = req.body;
-
-  const appointment = await prisma.appointment.create({
-    data: { clientId, vehicleId, serviceId, scheduledAt, companyId }
-  });
-  res.json(appointment);
+router.post("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const { clientId, vehicleId, serviceId, scheduledAt } = req.body;
+    const appointment = await tprisma.appointment.create({
+      data: { clientId, vehicleId, serviceId, scheduledAt }
+    });
+    res.json(appointment);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
-module.exports = router;
-

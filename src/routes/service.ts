@@ -1,27 +1,33 @@
 import { Router } from "express";
-import { prisma } from "../prisma"; 
-import  authMiddleware from "../middleware/auth";
+import authMiddleware from "../middleware/auth";
+import tenantMiddleware from "../middleware/tenant";
+import { tenantPrisma } from "../utils/tenantPrisma";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(tenantMiddleware);
 
-// LISTAR SERVIÇOS
-router.get("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const services = await prisma.service.findMany({ where: { companyId } });
-  res.json(services);
+router.get("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const services = await tprisma.service.findMany({});
+    res.json(services);
+  } catch (err) {
+    next(err);
+  }
 });
 
-// CRIAR SERVIÇO
-router.post("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const { name, price, duration } = req.body;
-
-  const service = await prisma.service.create({
-    data: { name, price, duration, companyId }
-  });
-  res.json(service);
+router.post("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const { name, price, duration } = req.body;
+    const service = await tprisma.service.create({
+      data: { name, price, duration }
+    });
+    res.json(service);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
-module.exports = router;

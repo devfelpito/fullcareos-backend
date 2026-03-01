@@ -1,27 +1,33 @@
 import { Router } from "express";
-import { prisma } from "../prisma"; 
-import  authMiddleware from "../middleware/auth";
+import authMiddleware from "../middleware/auth";
+import tenantMiddleware from "../middleware/tenant";
+import { tenantPrisma } from "../utils/tenantPrisma";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(tenantMiddleware);
 
-// LISTAR VENDAS
-router.get("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const sales = await prisma.sale.findMany({ where: { companyId } });
-  res.json(sales);
+router.get("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const sales = await tprisma.sale.findMany({});
+    res.json(sales);
+  } catch (err) {
+    next(err);
+  }
 });
 
-// CRIAR VENDA
-router.post("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const { clientId, serviceId, amount, paymentMethod } = req.body;
-
-  const sale = await prisma.sale.create({
-    data: { clientId, serviceId, amount, paymentMethod, companyId }
-  });
-  res.json(sale);
+router.post("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const { clientId, serviceId, amount, paymentMethod } = req.body;
+    const sale = await tprisma.sale.create({
+      data: { clientId, serviceId, amount, paymentMethod }
+    });
+    res.json(sale);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
-module.exports = router;

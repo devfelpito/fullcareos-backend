@@ -1,9 +1,9 @@
-﻿ // filepath: c:\Users\danie\fullcareos\backend\src\utils\tenantPrisma.ts
+ // filepath: c:\Users\danie\fullcareos\backend\src\utils\tenantPrisma.ts
 import { prisma as basePrisma } from "../prisma";
 
 type AnyFn = (...args: any[]) => any;
 
-export function tenantPrisma(companyId: number) {
+export function tenantPrisma(companyId: string) {
   const handler: ProxyHandler<any> = {
     get(target, prop: string | symbol) {
       const name = String(prop);

@@ -1,27 +1,33 @@
 import { Router } from "express";
-import { prisma } from "../prisma"; 
-import  authMiddleware  from "../middleware/auth";
+import authMiddleware from "../middleware/auth";
+import tenantMiddleware from "../middleware/tenant";
+import { tenantPrisma } from "../utils/tenantPrisma";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(tenantMiddleware);
 
-// LISTAR DESPESAS
-router.get("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const expenses = await prisma.expense.findMany({ where: { companyId } });
-  res.json(expenses);
+router.get("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const expenses = await tprisma.expense.findMany({});
+    res.json(expenses);
+  } catch (err) {
+    next(err);
+  }
 });
 
-// CRIAR DESPESA
-router.post("/", async (req, res) => {
-  const companyId = (req as any).user.companyId;
-  const { description, amount } = req.body;
-
-  const expense = await prisma.expense.create({
-    data: { description, amount, companyId }
-  });
-  res.json(expense);
+router.post("/", async (req, res, next) => {
+  try {
+    const tprisma = tenantPrisma((req as any).tenantId);
+    const { description, amount } = req.body;
+    const expense = await tprisma.expense.create({
+      data: { description, amount }
+    });
+    res.json(expense);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
-module.exports = router;

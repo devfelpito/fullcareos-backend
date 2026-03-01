@@ -1,12 +1,11 @@
 import { Router } from "express";
-import { prisma } from "../prisma"; 
+import { prisma } from "../prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const router = Router();
 
-// LOGIN
-router.post("/login", async (req, res) => {
+router.post("/login", async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
@@ -24,9 +23,8 @@ router.post("/login", async (req, res) => {
 
     res.json({ token, user });
   } catch (err) {
-    res.status(500).json({ error: "Erro ao efetuar login" });
+    next(err);
   }
 });
 
 export default router;
-module.exports = router;

@@ -1,4 +1,4 @@
-﻿ // filepath: c:\Users\danie\fullcareos\backend\src\routes\client.ts
+ // filepath: c:\Users\danie\fullcareos\backend\src\routes\client.ts
 import express from "express";
 import authMiddleware from "../middleware/auth";
 import tenantMiddleware from "../middleware/tenant";
@@ -34,4 +34,3 @@ router.post("/", async (req, res, next) => {
 });
 
 export default router;
-module.exports = router;
