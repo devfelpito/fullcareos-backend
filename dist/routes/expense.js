@@ -7,12 +7,13 @@ const express_1 = require("express");
 const prisma_1 = require("../prisma");
 const auth_1 = __importDefault(require("../middleware/auth"));
 const tenant_1 = __importDefault(require("../middleware/tenant"));
+const permission_1 = require("../middleware/permission");
 const validate_1 = require("../middleware/validate");
 const schemas_1 = require("../validation/schemas");
 const router = (0, express_1.Router)();
 router.use(auth_1.default);
 router.use(tenant_1.default);
-router.get("/", async (req, res, next) => {
+router.get("/", (0, permission_1.requirePermission)("expenses:read"), async (req, res, next) => {
     try {
         const tenantId = req.tenantId;
         const expenses = await prisma_1.prisma.expense.findMany({
@@ -24,7 +25,7 @@ router.get("/", async (req, res, next) => {
         next(err);
     }
 });
-router.post("/", (0, validate_1.validateBody)(schemas_1.createExpenseSchema), async (req, res, next) => {
+router.post("/", (0, permission_1.requirePermission)("expenses:write"), (0, validate_1.validateBody)(schemas_1.createExpenseSchema), async (req, res, next) => {
     try {
         const tenantId = req.tenantId;
         const { description, amount } = req.body;

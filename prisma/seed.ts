@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Permission } from "@prisma/client";
 import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
@@ -28,7 +28,7 @@ async function main() {
     { name: "Operador", description: "Acesso apenas a agenda e clientes" },
   ];
 
-  const createdRoles: any[] = [];
+  const createdRoles: { id: string; name: string }[] = [];
 
   for (const roleData of roles) {
     const role = await prisma.role.create({
@@ -38,10 +38,37 @@ async function main() {
         companyId: company.id,
       },
     });
-    createdRoles.push(role);
+    createdRoles.push({ id: role.id, name: role.name });
   }
 
   console.log("Cargos criados:", createdRoles.map((r) => r.name).join(", "));
+
+  // Permissões RBAC (read/write por módulo)
+  const permissionNames = [
+    "clients:read",
+    "clients:write",
+    "vehicles:read",
+    "vehicles:write",
+    "services:read",
+    "services:write",
+    "appointments:read",
+    "appointments:write",
+    "sales:read",
+    "sales:write",
+    "expenses:read",
+    "expenses:write",
+  ];
+
+  const permissions: Permission[] = [];
+
+  for (const name of permissionNames) {
+    const permission = await prisma.permission.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+    permissions.push(permission);
+  }
 
   // Criar Admin padrão (idempotente com upsert)
   const passwordHash = await bcrypt.hash("Fullcare123", 10);
@@ -66,7 +93,25 @@ async function main() {
     },
   });
 
+  // Vincular todas permissões ao cargo Admin (idempotente)
+  for (const permission of permissions) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: adminRoleId,
+          permissionId: permission.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: adminRoleId,
+        permissionId: permission.id,
+      },
+    });
+  }
+
   console.log("Usuário Admin criado/atualizado:", adminUser.email);
+  console.log("Permissões RBAC aplicadas ao Admin:", permissionNames.join(", "));
 }
 
 main()

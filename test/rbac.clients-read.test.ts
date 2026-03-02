@@ -12,7 +12,7 @@ describe("RBAC - clients:read", () => {
   let deniedToken = "";
 
   beforeAll(async () => {
-    // cleanup idempotente
+    // cleanup idempotente de dados de teste (ordem para evitar FK)
     await prisma.user.deleteMany({
       where: {
         email: { in: ["rbac-allow@teste.com", "rbac-deny@teste.com"] },
@@ -31,10 +31,6 @@ describe("RBAC - clients:read", () => {
       where: {
         name: { in: ["RBAC Allowed Role", "RBAC Denied Role"] },
       },
-    });
-
-    await prisma.permission.deleteMany({
-      where: { name: "clients:read" },
     });
 
     await prisma.company.deleteMany({
@@ -72,14 +68,23 @@ describe("RBAC - clients:read", () => {
     roleAllowedId = roleAllowed.id;
     roleDeniedId = roleDenied.id;
 
-    // cria permissão clients:read
-    const permClientsRead = await prisma.permission.create({
-      data: { name: "clients:read" },
+    // garante permissão clients:read sem deletar permissão global
+    const permClientsRead = await prisma.permission.upsert({
+      where: { name: "clients:read" },
+      update: {},
+      create: { name: "clients:read" },
     });
 
     // vincula permissão somente à roleAllowed
-    await prisma.rolePermission.create({
-      data: {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: roleAllowedId,
+          permissionId: permClientsRead.id,
+        },
+      },
+      update: {},
+      create: {
         roleId: roleAllowedId,
         permissionId: permClientsRead.id,
       },
@@ -134,9 +139,7 @@ describe("RBAC - clients:read", () => {
 
     await prisma.rolePermission.deleteMany({
       where: {
-        role: {
-          name: { in: ["RBAC Allowed Role", "RBAC Denied Role"] },
-        },
+        roleId: { in: [roleAllowedId, roleDeniedId] },
       },
     });
 
@@ -144,10 +147,6 @@ describe("RBAC - clients:read", () => {
       where: {
         name: { in: ["RBAC Allowed Role", "RBAC Denied Role"] },
       },
-    });
-
-    await prisma.permission.deleteMany({
-      where: { name: "clients:read" },
     });
 
     await prisma.company.deleteMany({

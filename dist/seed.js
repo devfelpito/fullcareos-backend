@@ -39,17 +39,30 @@ async function main() {
         createdRoles.push(role);
     }
     console.log("Cargos criados:", createdRoles.map((r) => r.name).join(", "));
-    // Criar permissões de clientes (idempotente)
-    const clientsReadPermission = await prisma.permission.upsert({
-        where: { name: "clients:read" },
-        update: {},
-        create: { name: "clients:read" },
-    });
-    const clientsWritePermission = await prisma.permission.upsert({
-        where: { name: "clients:write" },
-        update: {},
-        create: { name: "clients:write" },
-    });
+    // Permissões RBAC (read/write por módulo)
+    const permissionNames = [
+        "clients:read",
+        "clients:write",
+        "vehicles:read",
+        "vehicles:write",
+        "services:read",
+        "services:write",
+        "appointments:read",
+        "appointments:write",
+        "sales:read",
+        "sales:write",
+        "expenses:read",
+        "expenses:write",
+    ];
+    const permissions = [];
+    for (const name of permissionNames) {
+        const permission = await prisma.permission.upsert({
+            where: { name },
+            update: {},
+            create: { name },
+        });
+        permissions.push(permission);
+    }
     // Criar Admin padrão (idempotente com upsert)
     const passwordHash = await bcrypt_1.default.hash("Fullcare123", 10);
     const adminRoleId = createdRoles.find((r) => r.name === "Admin").id;
@@ -71,35 +84,24 @@ async function main() {
             roleId: adminRoleId,
         },
     });
-    // Vincular permissões ao cargo Admin (idempotente)
-    await prisma.rolePermission.upsert({
-        where: {
-            roleId_permissionId: {
-                roleId: adminRoleId,
-                permissionId: clientsReadPermission.id,
+    // Vincular todas permissões ao cargo Admin (idempotente)
+    for (const permission of permissions) {
+        await prisma.rolePermission.upsert({
+            where: {
+                roleId_permissionId: {
+                    roleId: adminRoleId,
+                    permissionId: permission.id,
+                },
             },
-        },
-        update: {},
-        create: {
-            roleId: adminRoleId,
-            permissionId: clientsReadPermission.id,
-        },
-    });
-    await prisma.rolePermission.upsert({
-        where: {
-            roleId_permissionId: {
+            update: {},
+            create: {
                 roleId: adminRoleId,
-                permissionId: clientsWritePermission.id,
+                permissionId: permission.id,
             },
-        },
-        update: {},
-        create: {
-            roleId: adminRoleId,
-            permissionId: clientsWritePermission.id,
-        },
-    });
+        });
+    }
     console.log("Usuário Admin criado/atualizado:", adminUser.email);
-    console.log("Permissões RBAC aplicadas ao Admin: clients:read, clients:write");
+    console.log("Permissões RBAC aplicadas ao Admin:", permissionNames.join(", "));
 }
 main()
     .catch((e) => {
