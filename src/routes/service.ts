@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { prisma } from "../prisma";
 import authMiddleware from "../middleware/auth";
 import tenantMiddleware from "../middleware/tenant";
-import { tenantPrisma } from "../utils/tenantPrisma";
+import { validateBody } from "../middleware/validate";
+import { createServiceSchema } from "../validation/schemas";
 
 const router = Router();
 router.use(authMiddleware);
@@ -9,22 +11,25 @@ router.use(tenantMiddleware);
 
 router.get("/", async (req, res, next) => {
   try {
-    const tprisma = tenantPrisma((req as any).tenantId);
-    const services = await tprisma.service.findMany({});
+    const tenantId = (req as any).tenantId as string;
+    const services = await prisma.service.findMany({
+      where: { companyId: tenantId },
+    });
     res.json(services);
   } catch (err) {
     next(err);
   }
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", validateBody(createServiceSchema), async (req, res, next) => {
   try {
-    const tprisma = tenantPrisma((req as any).tenantId);
+    const tenantId = (req as any).tenantId as string;
     const { name, price, duration } = req.body;
-    const service = await tprisma.service.create({
-      data: { name, price, duration }
+
+    const service = await prisma.service.create({
+      data: { name, price, duration, companyId: tenantId },
     });
-    res.json(service);
+    res.status(201).json(service);
   } catch (err) {
     next(err);
   }

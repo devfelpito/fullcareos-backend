@@ -1,32 +1,33 @@
- // filepath: c:\Users\danie\fullcareos\backend\src\routes\client.ts
-import express from "express";
+import { Router } from "express";
+import { prisma } from "../prisma";
 import authMiddleware from "../middleware/auth";
 import tenantMiddleware from "../middleware/tenant";
-import { tenantPrisma } from "../utils/tenantPrisma";
+import { validateBody } from "../middleware/validate";
+import { createClientSchema } from "../validation/schemas";
 
-const router = express.Router();
+const router = Router();
 
-// aplica tenantMiddleware para todas as rotas deste router
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 
-// listar clientes do tenant
 router.get("/", async (req, res, next) => {
   try {
-    const tprisma = tenantPrisma((req as any).tenantId);
-    const clients = await tprisma.client.findMany({});
+    const tenantId = (req as any).tenantId as string;
+    const clients = await prisma.client.findMany({
+      where: { companyId: tenantId },
+    });
     res.json(clients);
   } catch (err) {
     next(err);
   }
 });
 
-// criar cliente (companyId injetado automaticamente)
-router.post("/", async (req, res, next) => {
+router.post("/", validateBody(createClientSchema), async (req, res, next) => {
   try {
-    const tprisma = tenantPrisma((req as any).tenantId);
-    const data = req.body;
-    const client = await tprisma.client.create({ data });
+    const tenantId = (req as any).tenantId as string;
+    const client = await prisma.client.create({
+      data: { ...req.body, companyId: tenantId },
+    });
     res.status(201).json(client);
   } catch (err) {
     next(err);

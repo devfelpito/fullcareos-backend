@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { prisma } from "../prisma";
 import authMiddleware from "../middleware/auth";
 import tenantMiddleware from "../middleware/tenant";
-import { tenantPrisma } from "../utils/tenantPrisma";
+import { validateBody } from "../middleware/validate";
+import { createExpenseSchema } from "../validation/schemas";
 
 const router = Router();
 router.use(authMiddleware);
@@ -9,22 +11,25 @@ router.use(tenantMiddleware);
 
 router.get("/", async (req, res, next) => {
   try {
-    const tprisma = tenantPrisma((req as any).tenantId);
-    const expenses = await tprisma.expense.findMany({});
+    const tenantId = (req as any).tenantId as string;
+    const expenses = await prisma.expense.findMany({
+      where: { companyId: tenantId },
+    });
     res.json(expenses);
   } catch (err) {
     next(err);
   }
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", validateBody(createExpenseSchema), async (req, res, next) => {
   try {
-    const tprisma = tenantPrisma((req as any).tenantId);
+    const tenantId = (req as any).tenantId as string;
     const { description, amount } = req.body;
-    const expense = await tprisma.expense.create({
-      data: { description, amount }
+
+    const expense = await prisma.expense.create({
+      data: { description, amount, companyId: tenantId },
     });
-    res.json(expense);
+    res.status(201).json(expense);
   } catch (err) {
     next(err);
   }

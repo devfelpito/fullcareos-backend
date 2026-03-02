@@ -4,30 +4,34 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const prisma_1 = require("../prisma");
 const auth_1 = __importDefault(require("../middleware/auth"));
 const tenant_1 = __importDefault(require("../middleware/tenant"));
-const tenantPrisma_1 = require("../utils/tenantPrisma");
+const validate_1 = require("../middleware/validate");
+const schemas_1 = require("../validation/schemas");
 const router = (0, express_1.Router)();
 router.use(auth_1.default);
 router.use(tenant_1.default);
 router.get("/", async (req, res, next) => {
     try {
-        const tprisma = (0, tenantPrisma_1.tenantPrisma)(req.tenantId);
-        const services = await tprisma.service.findMany({});
+        const tenantId = req.tenantId;
+        const services = await prisma_1.prisma.service.findMany({
+            where: { companyId: tenantId },
+        });
         res.json(services);
     }
     catch (err) {
         next(err);
     }
 });
-router.post("/", async (req, res, next) => {
+router.post("/", (0, validate_1.validateBody)(schemas_1.createServiceSchema), async (req, res, next) => {
     try {
-        const tprisma = (0, tenantPrisma_1.tenantPrisma)(req.tenantId);
+        const tenantId = req.tenantId;
         const { name, price, duration } = req.body;
-        const service = await tprisma.service.create({
-            data: { name, price, duration }
+        const service = await prisma_1.prisma.service.create({
+            data: { name, price, duration, companyId: tenantId },
         });
-        res.json(service);
+        res.status(201).json(service);
     }
     catch (err) {
         next(err);

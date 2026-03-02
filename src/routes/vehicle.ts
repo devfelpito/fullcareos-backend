@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { prisma } from "../prisma";
 import authMiddleware from "../middleware/auth";
 import tenantMiddleware from "../middleware/tenant";
-import { tenantPrisma } from "../utils/tenantPrisma";
+import { validateBody } from "../middleware/validate";
+import { createVehicleSchema } from "../validation/schemas";
 
 const router = Router();
 router.use(authMiddleware);
@@ -9,22 +11,25 @@ router.use(tenantMiddleware);
 
 router.get("/", async (req, res, next) => {
   try {
-    const tprisma = tenantPrisma((req as any).tenantId);
-    const vehicles = await tprisma.vehicle.findMany({});
+    const tenantId = (req as any).tenantId as string;
+    const vehicles = await prisma.vehicle.findMany({
+      where: { companyId: tenantId },
+    });
     res.json(vehicles);
   } catch (err) {
     next(err);
   }
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", validateBody(createVehicleSchema), async (req, res, next) => {
   try {
-    const tprisma = tenantPrisma((req as any).tenantId);
+    const tenantId = (req as any).tenantId as string;
     const { clientId, model, plate } = req.body;
-    const vehicle = await tprisma.vehicle.create({
-      data: { clientId, model, plate }
+
+    const vehicle = await prisma.vehicle.create({
+      data: { clientId, model, plate, companyId: tenantId },
     });
-    res.json(vehicle);
+    res.status(201).json(vehicle);
   } catch (err) {
     next(err);
   }
