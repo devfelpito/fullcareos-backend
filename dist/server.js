@@ -19,5 +19,7 @@ app.use("/api", routes_1.default);
 // Tratamento centralizado de erros (evita vazamento de logs do Prisma)
 app.use(errorHandler_1.default);
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+if (process.env.NODE_ENV !== "test") {
+    app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+}
 exports.default = app;

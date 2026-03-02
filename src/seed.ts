@@ -43,6 +43,19 @@ async function main() {
 
   console.log("Cargos criados:", createdRoles.map((r) => r.name).join(", "));
 
+  // Criar permissões de clientes (idempotente)
+  const clientsReadPermission = await prisma.permission.upsert({
+    where: { name: "clients:read" },
+    update: {},
+    create: { name: "clients:read" },
+  });
+
+  const clientsWritePermission = await prisma.permission.upsert({
+    where: { name: "clients:write" },
+    update: {},
+    create: { name: "clients:write" },
+  });
+
   // Criar Admin padrão (idempotente com upsert)
   const passwordHash = await bcrypt.hash("Fullcare123", 10);
   const adminRoleId = createdRoles.find((r) => r.name === "Admin")!.id;
@@ -66,7 +79,37 @@ async function main() {
     },
   });
 
+  // Vincular permissões ao cargo Admin (idempotente)
+  await prisma.rolePermission.upsert({
+    where: {
+      roleId_permissionId: {
+        roleId: adminRoleId,
+        permissionId: clientsReadPermission.id,
+      },
+    },
+    update: {},
+    create: {
+      roleId: adminRoleId,
+      permissionId: clientsReadPermission.id,
+    },
+  });
+
+  await prisma.rolePermission.upsert({
+    where: {
+      roleId_permissionId: {
+        roleId: adminRoleId,
+        permissionId: clientsWritePermission.id,
+      },
+    },
+    update: {},
+    create: {
+      roleId: adminRoleId,
+      permissionId: clientsWritePermission.id,
+    },
+  });
+
   console.log("Usuário Admin criado/atualizado:", adminUser.email);
+  console.log("Permissões RBAC aplicadas ao Admin: clients:read, clients:write");
 }
 
 main()

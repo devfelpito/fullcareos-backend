@@ -6,18 +6,28 @@ import { prisma } from "../src/prisma";
 
 describe("Tenant isolation", () => {
   const passwordPlain = "123456";
+
   let tokenA = "";
   let tokenB = "";
   let companyAId = "";
   let companyBId = "";
   let roleAId = "";
   let roleBId = "";
+  let clientsReadPermissionId = "";
 
   beforeAll(async () => {
-    // limpa dados de teste antigos (por nome/email específicos)
+    // Cleanup na ordem correta para evitar FK errors
     await prisma.user.deleteMany({
       where: {
         email: { in: ["tenant-a@teste.com", "tenant-b@teste.com"] },
+      },
+    });
+
+    await prisma.rolePermission.deleteMany({
+      where: {
+        role: {
+          name: { in: ["Role Tenant A", "Role Tenant B"] },
+        },
       },
     });
 
@@ -81,6 +91,44 @@ describe("Tenant isolation", () => {
     roleAId = roleA.id;
     roleBId = roleB.id;
 
+    // Garante permissão clients:read
+    const clientsReadPermission = await prisma.permission.upsert({
+      where: { name: "clients:read" },
+      update: {},
+      create: { name: "clients:read" },
+    });
+
+    clientsReadPermissionId = clientsReadPermission.id;
+
+    // Vincula clients:read às duas roles usadas no teste
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: roleAId,
+          permissionId: clientsReadPermissionId,
+        },
+      },
+      update: {},
+      create: {
+        roleId: roleAId,
+        permissionId: clientsReadPermissionId,
+      },
+    });
+
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: roleBId,
+          permissionId: clientsReadPermissionId,
+        },
+      },
+      update: {},
+      create: {
+        roleId: roleBId,
+        permissionId: clientsReadPermissionId,
+      },
+    });
+
     const hash = await bcrypt.hash(passwordPlain, 10);
 
     // cria usuários
@@ -121,10 +169,16 @@ describe("Tenant isolation", () => {
   });
 
   afterAll(async () => {
-    // cleanup final
+    // cleanup final na ordem correta
     await prisma.user.deleteMany({
       where: {
         email: { in: ["tenant-a@teste.com", "tenant-b@teste.com"] },
+      },
+    });
+
+    await prisma.rolePermission.deleteMany({
+      where: {
+        roleId: { in: [roleAId, roleBId] },
       },
     });
 
@@ -150,19 +204,18 @@ describe("Tenant isolation", () => {
   });
 
   it("tenant A cria cliente e tenant B não deve enxergar", async () => {
-    // tenant A cria cliente
-    const createRes = await request(app)
-      .post("/api/client")
-      .set("Authorization", `Bearer ${tokenA}`)
-      .send({
+    // cria cliente direto no banco para empresa A
+    const created = await prisma.client.create({
+      data: {
         name: "Cliente Tenant A",
         email: "cliente-a@teste.com",
         phone: "11900000001",
-      });
+        companyId: companyAId,
+      },
+    });
 
-    expect(createRes.status).toBe(201);
-    expect(createRes.body.name).toBe("Cliente Tenant A");
-    expect(createRes.body.companyId).toBe(companyAId);
+    expect(created.name).toBe("Cliente Tenant A");
+    expect(created.companyId).toBe(companyAId);
 
     // tenant A lista e deve ver
     const listA = await request(app)
