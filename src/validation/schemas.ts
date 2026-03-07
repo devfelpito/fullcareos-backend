@@ -7,6 +7,24 @@ export const loginSchema = z
   })
   .strict();
 
+export const onboardingSchema = z
+  .object({
+    companyName: z.string().min(2, "Nome da empresa é obrigatório"),
+    companyEmail: z.string().email("E-mail da empresa inválido"),
+    phone: z.string().min(8, "Telefone é obrigatório"),
+    address: z.string().min(5, "Endereço é obrigatório"),
+    adminName: z.string().min(2, "Nome do administrador é obrigatório"),
+    adminEmail: z.string().email("E-mail do administrador inválido"),
+    adminPassword: z.string().min(8, "Senha deve ter pelo menos 8 caracteres"),
+  })
+  .strict();
+
+export const billingCheckoutSchema = z
+  .object({
+    plan: z.enum(["monthly", "quarterly", "yearly"]),
+  })
+  .strict();
+
 export const createClientSchema = z
   .object({
     name: z.string().min(1, "Nome é obrigatório"),
