@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+﻿import { NextFunction, Request, Response } from "express";
 import { prisma } from "../prisma";
 
 export function requirePermission(permissionName: string) {
@@ -8,7 +8,7 @@ export function requirePermission(permissionName: string) {
       const tenantId = (req as any).tenantId as string | undefined;
 
       if (!user?.roleId || !tenantId) {
-        return res.status(401).json({ message: "Usuario nao autenticado" });
+        return res.status(401).json({ message: "Usuário não autenticado" });
       }
 
       const rolePermission = await prisma.rolePermission.findFirst({

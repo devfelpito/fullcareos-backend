@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+﻿import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { prisma } from "../prisma";
 
@@ -12,12 +12,12 @@ export default async function authMiddleware(req: Request, res: Response, next: 
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Usuario nao autenticado" });
+      return res.status(401).json({ message: "Usuário não autenticado" });
     }
 
     const secret = process.env.JWT_SECRET;
     if (!secret) {
-      return res.status(500).json({ message: "JWT_SECRET nao configurado" });
+      return res.status(500).json({ message: "JWT_SECRET não configurado" });
     }
 
     const token = authHeader.slice(7);
@@ -34,7 +34,7 @@ export default async function authMiddleware(req: Request, res: Response, next: 
     });
 
     if (!user || !user.active) {
-      return res.status(401).json({ message: "Usuario nao autenticado" });
+      return res.status(401).json({ message: "Usuário não autenticado" });
     }
 
     (req as any).user = {
@@ -46,6 +46,6 @@ export default async function authMiddleware(req: Request, res: Response, next: 
 
     next();
   } catch (_err) {
-    return res.status(401).json({ message: "Usuario nao autenticado" });
+    return res.status(401).json({ message: "Usuário não autenticado" });
   }
 }

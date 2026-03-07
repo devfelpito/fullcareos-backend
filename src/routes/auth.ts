@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { prisma } from "../prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -15,12 +15,12 @@ router.post("/login", loginRateLimit, validateBody(loginSchema), async (req, res
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user || !user.active) {
-      return res.status(401).json({ message: "Credenciais invalidas" });
+      return res.status(401).json({ message: "Credenciais inválidas" });
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
-      return res.status(401).json({ message: "Credenciais invalidas" });
+      return res.status(401).json({ message: "Credenciais inválidas" });
     }
 
     const token = jwt.sign(

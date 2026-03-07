@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+﻿import { NextFunction, Request, Response } from "express";
 import { ZodSchema } from "zod";
 
 export function validateBody<T>(schema: ZodSchema<T>) {
@@ -7,7 +7,7 @@ export function validateBody<T>(schema: ZodSchema<T>) {
 
     if (!parsed.success) {
       return res.status(400).json({
-        error: "Dados inválidos",
+        message: "Dados inválidos",
         details: parsed.error.issues.map((issue) => ({
           path: issue.path.join("."),
           message: issue.message,
