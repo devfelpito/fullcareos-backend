@@ -4,18 +4,24 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { validateBody } from "../middleware/validate";
 import { loginSchema } from "../validation/schemas";
+import loginRateLimit from "../middleware/loginRateLimit";
 
 const router = Router();
 
-router.post("/login", validateBody(loginSchema), async (req, res, next) => {
+router.post("/login", loginRateLimit, validateBody(loginSchema), async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
+
+    if (!user || !user.active) {
+      return res.status(401).json({ message: "Credenciais invalidas" });
+    }
 
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).json({ message: "Senha inválida" });
+    if (!valid) {
+      return res.status(401).json({ message: "Credenciais invalidas" });
+    }
 
     const token = jwt.sign(
       { userId: user.id, companyId: user.companyId, roleId: user.roleId },

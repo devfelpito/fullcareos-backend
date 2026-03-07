@@ -4,17 +4,19 @@ import { prisma } from "../prisma";
 export function requirePermission(permissionName: string) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = (req as any).user;
-      if (!user?.roleId) {
-        return res.status(401).json({ message: "Usuário não autenticado" });
+      const user = (req as any).user as { roleId?: string } | undefined;
+      const tenantId = (req as any).tenantId as string | undefined;
+
+      if (!user?.roleId || !tenantId) {
+        return res.status(401).json({ message: "Usuario nao autenticado" });
       }
 
       const rolePermission = await prisma.rolePermission.findFirst({
         where: {
           roleId: user.roleId,
+          role: { companyId: tenantId },
           permission: { name: permissionName },
         },
-        include: { permission: true },
       });
 
       if (!rolePermission) {
