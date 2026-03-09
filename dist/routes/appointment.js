@@ -35,6 +35,9 @@ router.post("/", (0, permission_1.requirePermission)("appointments:write"), (0, 
         res.status(201).json(appointment);
     }
     catch (err) {
+        if (err?.code === "P2002") {
+            return res.status(409).json({ message: "Horário indisponível" });
+        }
         next(err);
     }
 });

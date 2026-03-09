@@ -1,6 +1,5 @@
 import request from "supertest";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import app from "../src/server";
 import { prisma } from "../src/prisma";
 
@@ -77,7 +76,7 @@ describe("RBAC - services:read", () => {
 
     const hash = await bcrypt.hash("123456", 10);
 
-    const userAllowed = await prisma.user.create({
+    await prisma.user.create({
       data: {
         name: "Allowed",
         email: "rbac-services-read-allow@teste.com",
@@ -88,7 +87,7 @@ describe("RBAC - services:read", () => {
       },
     });
 
-    const userDenied = await prisma.user.create({
+    await prisma.user.create({
       data: {
         name: "Denied",
         email: "rbac-services-read-deny@teste.com",
@@ -99,15 +98,19 @@ describe("RBAC - services:read", () => {
       },
     });
 
-    allowedToken = jwt.sign(
-      { userId: userAllowed.id, companyId, roleId: roleAllowedId },
-      process.env.JWT_SECRET as string
-    );
+    const loginAllowed = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "rbac-services-read-allow@teste.com", password: "123456" });
 
-    deniedToken = jwt.sign(
-      { userId: userDenied.id, companyId, roleId: roleDeniedId },
-      process.env.JWT_SECRET as string
-    );
+    const loginDenied = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "rbac-services-read-deny@teste.com", password: "123456" });
+
+    expect(loginAllowed.status).toBe(200);
+    expect(loginDenied.status).toBe(200);
+
+    allowedToken = loginAllowed.body.token;
+    deniedToken = loginDenied.body.token;
   });
 
   afterAll(async () => {

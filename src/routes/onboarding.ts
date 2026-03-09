@@ -5,12 +5,16 @@ import { prisma } from "../prisma";
 import { validateBody } from "../middleware/validate";
 import { onboardingSchema } from "../validation/schemas";
 import { SYSTEM_PERMISSIONS } from "../constants/permissions";
+import { makeUniqueSlug } from "../utils/slug";
+import { createPlainToken, hashToken } from "../utils/token";
+import { sendVerificationEmail } from "../services/email";
 
 const router = Router();
 
 router.post("/register", validateBody(onboardingSchema), async (req, res, next) => {
   const {
     companyName,
+    companySlug,
     companyEmail,
     phone,
     address,
@@ -18,15 +22,25 @@ router.post("/register", validateBody(onboardingSchema), async (req, res, next) 
     adminEmail,
     adminPassword,
   } = req.body;
+  const normalizedCompanyEmail = String(companyEmail).trim().toLowerCase();
+  const normalizedAdminEmail = String(adminEmail).trim().toLowerCase();
 
   try {
     const passwordHash = await bcrypt.hash(adminPassword, 10);
+    const adminVerificationPlainToken = createPlainToken();
+    const adminVerificationToken = hashToken(adminVerificationPlainToken);
+
+    const slug = await makeUniqueSlug(companySlug || companyName, async (candidate) => {
+      const exists = await prisma.company.findFirst({ where: { slug: candidate }, select: { id: true } });
+      return Boolean(exists);
+    });
 
     const result = await prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
         data: {
+          slug,
           name: companyName,
-          email: companyEmail,
+          email: normalizedCompanyEmail,
           phone,
           address,
           plan: "trial",
@@ -40,6 +54,17 @@ router.post("/register", validateBody(onboardingSchema), async (req, res, next) 
           description: "Acesso total ao sistema",
           companyId: company.id,
         },
+      });
+
+      await tx.service.createMany({
+        data: [
+          { companyId: company.id, category: "lavagem_polimento", name: "Lavagem detalhada", price: 120, duration: 90 },
+          { companyId: company.id, category: "lavagem_polimento", name: "Polimento", price: 350, duration: 180 },
+          { companyId: company.id, category: "lavagem_polimento", name: "Polimento cristalizado", price: 500, duration: 240 },
+          { companyId: company.id, category: "protecao_estetica", name: "Vitrificação", price: 900, duration: 360 },
+          { companyId: company.id, category: "protecao_estetica", name: "Aplicação de PPF", price: 1800, duration: 480 },
+          { companyId: company.id, category: "reparos_rapidos", name: "Martelinho de ouro", price: 250, duration: 120 },
+        ],
       });
 
       const permissions = await Promise.all(
@@ -66,8 +91,9 @@ router.post("/register", validateBody(onboardingSchema), async (req, res, next) 
       const user = await tx.user.create({
         data: {
           name: adminName,
-          email: adminEmail,
+          email: normalizedAdminEmail,
           password: passwordHash,
+          verificationToken: adminVerificationToken,
           active: true,
           companyId: company.id,
           roleId: adminRole.id,
@@ -87,15 +113,25 @@ router.post("/register", validateBody(onboardingSchema), async (req, res, next) 
       { expiresIn: "7d" }
     );
 
+    await sendVerificationEmail({
+      to: result.user.email,
+      companySlug: result.company.slug,
+      email: result.user.email,
+      token: adminVerificationPlainToken,
+      customer: false,
+    });
+
     return res.status(201).json({
       message: "Onboarding concluído com sucesso",
       token,
       company: {
         id: result.company.id,
+        slug: result.company.slug,
         name: result.company.name,
         email: result.company.email,
         plan: result.company.plan,
         trialEndsAt: result.company.trialEndsAt,
+        customerPortalBaseUrl: `/c/${result.company.slug}`,
       },
       user: {
         id: result.user.id,

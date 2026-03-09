@@ -21,6 +21,12 @@ describe("Onboarding /api/onboarding/register", () => {
     }
 
     if (companyId) {
+      await prisma.appointment.deleteMany({ where: { companyId } });
+      await prisma.sale.deleteMany({ where: { companyId } });
+      await prisma.expense.deleteMany({ where: { companyId } });
+      await prisma.vehicle.deleteMany({ where: { companyId } });
+      await prisma.client.deleteMany({ where: { companyId } });
+      await prisma.service.deleteMany({ where: { companyId } });
       await prisma.company.deleteMany({ where: { id: companyId } });
     }
 

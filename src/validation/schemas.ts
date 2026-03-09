@@ -7,9 +7,31 @@ export const loginSchema = z
   })
   .strict();
 
+export const authVerifyEmailSchema = z
+  .object({
+    email: z.string().email("E-mail inválido"),
+    token: z.string().min(10, "Token inválido"),
+  })
+  .strict();
+
+export const authForgotPasswordSchema = z
+  .object({
+    email: z.string().email("E-mail inválido"),
+  })
+  .strict();
+
+export const authResetPasswordSchema = z
+  .object({
+    email: z.string().email("E-mail inválido"),
+    token: z.string().min(10, "Token inválido"),
+    newPassword: z.string().min(8, "Nova senha deve ter no mínimo 8 caracteres"),
+  })
+  .strict();
+
 export const onboardingSchema = z
   .object({
     companyName: z.string().min(2, "Nome da empresa é obrigatório"),
+    companySlug: z.string().min(3).max(50).optional(),
     companyEmail: z.string().email("E-mail da empresa inválido"),
     phone: z.string().min(8, "Telefone é obrigatório"),
     address: z.string().min(5, "Endereço é obrigatório"),
@@ -22,6 +44,43 @@ export const onboardingSchema = z
 export const billingCheckoutSchema = z
   .object({
     plan: z.enum(["monthly", "quarterly", "yearly"]),
+  })
+  .strict();
+
+export const customerRegisterSchema = z
+  .object({
+    name: z.string().min(2, "Nome é obrigatório"),
+    email: z.string().email("E-mail inválido"),
+    phone: z.string().min(8, "Telefone é obrigatório"),
+    password: z.string().min(8, "Senha deve ter no mínimo 8 caracteres"),
+  })
+  .strict();
+
+export const customerLoginSchema = z
+  .object({
+    email: z.string().email("E-mail inválido"),
+    password: z.string().min(1, "Senha é obrigatória"),
+  })
+  .strict();
+
+export const customerVerifyEmailSchema = z
+  .object({
+    email: z.string().email("E-mail inválido"),
+    token: z.string().min(10, "Token inválido"),
+  })
+  .strict();
+
+export const customerForgotPasswordSchema = z
+  .object({
+    email: z.string().email("E-mail inválido"),
+  })
+  .strict();
+
+export const customerResetPasswordSchema = z
+  .object({
+    email: z.string().email("E-mail inválido"),
+    token: z.string().min(10, "Token inválido"),
+    newPassword: z.string().min(8, "Nova senha deve ter no mínimo 8 caracteres"),
   })
   .strict();
 
@@ -43,6 +102,9 @@ export const createVehicleSchema = z
 
 export const createServiceSchema = z
   .object({
+    category: z
+      .enum(["lavagem_polimento", "protecao_estetica", "reparos_rapidos", "geral"])
+      .optional(),
     name: z.string().min(1, "Nome é obrigatório"),
     price: z.number().positive("Preço deve ser maior que zero"),
     duration: z.number().int().positive("Duração deve ser um inteiro positivo"),

@@ -1,6 +1,5 @@
 import request from "supertest";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import app from "../src/server";
 import { prisma } from "../src/prisma";
 
@@ -132,7 +131,7 @@ describe("Tenant isolation", () => {
     const hash = await bcrypt.hash(passwordPlain, 10);
 
     // cria usuários
-    const userA = await prisma.user.create({
+    await prisma.user.create({
       data: {
         name: "User A",
         email: "tenant-a@teste.com",
@@ -143,7 +142,7 @@ describe("Tenant isolation", () => {
       },
     });
 
-    const userB = await prisma.user.create({
+    await prisma.user.create({
       data: {
         name: "User B",
         email: "tenant-b@teste.com",
@@ -154,18 +153,20 @@ describe("Tenant isolation", () => {
       },
     });
 
-    // gera tokens
-    tokenA = jwt.sign(
-      { userId: userA.id, companyId: companyAId, roleId: roleAId },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "1h" }
-    );
+    // gera tokens via login real
+    const loginA = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "tenant-a@teste.com", password: passwordPlain });
 
-    tokenB = jwt.sign(
-      { userId: userB.id, companyId: companyBId, roleId: roleBId },
-      process.env.JWT_SECRET as string,
-      { expiresIn: "1h" }
-    );
+    const loginB = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "tenant-b@teste.com", password: passwordPlain });
+
+    expect(loginA.status).toBe(200);
+    expect(loginB.status).toBe(200);
+
+    tokenA = loginA.body.token;
+    tokenB = loginB.body.token;
   });
 
   afterAll(async () => {

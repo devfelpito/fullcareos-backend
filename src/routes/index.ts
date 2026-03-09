@@ -1,7 +1,9 @@
 ﻿import { Router } from "express";
 
 import authRoutes from "./auth";
+import customerAuthRoutes from "./customerAuth";
 import onboardingRoutes from "./onboarding";
+import customerPortalRoutes from "./customerPortal";
 import billingRoutes from "./billing";
 import systemRoutes from "./system";
 import clientRoutes from "./client";
@@ -17,6 +19,8 @@ const router = Router();
 
 router.use("/system", unwrap(systemRoutes));
 router.use("/auth", unwrap(authRoutes));
+router.use("/customer-auth", unwrap(customerAuthRoutes));
+router.use("/customer-portal", unwrap(customerPortalRoutes));
 router.use("/onboarding", unwrap(onboardingRoutes));
 router.use("/billing", unwrap(billingRoutes));
 router.use("/client", unwrap(clientRoutes));
