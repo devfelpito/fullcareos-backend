@@ -16,6 +16,7 @@ router.get("/", requirePermission("services:read"), async (req, res, next) => {
     const tenantId = (req as any).tenantId as string;
     const services = await prisma.service.findMany({
       where: { companyId: tenantId },
+      orderBy: [{ category: "asc" }, { name: "asc" }],
     });
     res.json(services);
   } catch (err) {
@@ -30,10 +31,10 @@ router.post(
   async (req, res, next) => {
     try {
       const tenantId = (req as any).tenantId as string;
-      const { name, price, duration } = req.body;
+      const { category, name, price, duration } = req.body;
 
       const service = await prisma.service.create({
-        data: { name, price, duration, companyId: tenantId },
+        data: { category: category || "geral", name, price, duration, companyId: tenantId },
       });
 
       res.status(201).json(service);

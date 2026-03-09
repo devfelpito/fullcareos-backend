@@ -1,6 +1,5 @@
 import request from "supertest";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import app from "../src/server";
 import { prisma } from "../src/prisma";
 
@@ -45,17 +44,32 @@ describe("RBAC - appointments:read", () => {
     companyId = company.id;
 
     const client = await prisma.client.create({
-      data: { name: "App Read Client", email: "rbac-app-read-client@teste.com", phone: "11999992008", companyId },
+      data: {
+        name: "App Read Client",
+        email: "rbac-app-read-client@teste.com",
+        phone: "11999992008",
+        companyId,
+      },
     });
     clientId = client.id;
 
     const service = await prisma.service.create({
-      data: { name: "RBAC App Read Service", price: 100, duration: 30, companyId },
+      data: {
+        name: "RBAC App Read Service",
+        price: 100,
+        duration: 30,
+        companyId,
+      },
     });
     serviceId = service.id;
 
     const vehicle = await prisma.vehicle.create({
-      data: { clientId, companyId, model: "App Read Car", plate: "ARD-1001" },
+      data: {
+        clientId,
+        companyId,
+        model: "App Read Car",
+        plate: "ARD-1001",
+      },
     });
     vehicleId = vehicle.id;
 
@@ -69,8 +83,12 @@ describe("RBAC - appointments:read", () => {
       },
     });
 
-    const roleAllowed = await prisma.role.create({ data: { name: "RBAC App Read Allowed", companyId } });
-    const roleDenied = await prisma.role.create({ data: { name: "RBAC App Read Denied", companyId } });
+    const roleAllowed = await prisma.role.create({
+      data: { name: "RBAC App Read Allowed", companyId },
+    });
+    const roleDenied = await prisma.role.create({
+      data: { name: "RBAC App Read Denied", companyId },
+    });
 
     roleAllowedId = roleAllowed.id;
     roleDeniedId = roleDenied.id;
@@ -82,13 +100,22 @@ describe("RBAC - appointments:read", () => {
     });
 
     await prisma.rolePermission.upsert({
-      where: { roleId_permissionId: { roleId: roleAllowedId, permissionId: perm.id } },
+      where: {
+        roleId_permissionId: {
+          roleId: roleAllowedId,
+          permissionId: perm.id,
+        },
+      },
       update: {},
-      create: { roleId: roleAllowedId, permissionId: perm.id },
+      create: {
+        roleId: roleAllowedId,
+        permissionId: perm.id,
+      },
     });
 
     const hash = await bcrypt.hash("123456", 10);
-    const userAllowed = await prisma.user.create({
+
+    await prisma.user.create({
       data: {
         name: "Allowed",
         email: "rbac-app-read-allow@teste.com",
@@ -98,7 +125,8 @@ describe("RBAC - appointments:read", () => {
         roleId: roleAllowedId,
       },
     });
-    const userDenied = await prisma.user.create({
+
+    await prisma.user.create({
       data: {
         name: "Denied",
         email: "rbac-app-read-deny@teste.com",
@@ -109,16 +137,34 @@ describe("RBAC - appointments:read", () => {
       },
     });
 
-    tokenAllowed = jwt.sign({ userId: userAllowed.id, companyId, roleId: roleAllowedId }, process.env.JWT_SECRET as string);
-    tokenDenied = jwt.sign({ userId: userDenied.id, companyId, roleId: roleDeniedId }, process.env.JWT_SECRET as string);
+    // 🔐 token via login real (em vez de jwt.sign manual)
+    const loginAllowed = await request(app).post("/api/auth/login").send({
+      email: "rbac-app-read-allow@teste.com",
+      password: "123456",
+    });
+
+    const loginDenied = await request(app).post("/api/auth/login").send({
+      email: "rbac-app-read-deny@teste.com",
+      password: "123456",
+    });
+
+    expect(loginAllowed.status).toBe(200);
+    expect(loginDenied.status).toBe(200);
+
+    tokenAllowed = loginAllowed.body.token;
+    tokenDenied = loginDenied.body.token;
   });
 
   afterAll(async () => {
     await prisma.user.deleteMany({
       where: { email: { in: ["rbac-app-read-allow@teste.com", "rbac-app-read-deny@teste.com"] } },
     });
-    await prisma.rolePermission.deleteMany({ where: { roleId: { in: [roleAllowedId, roleDeniedId] } } });
-    await prisma.role.deleteMany({ where: { id: { in: [roleAllowedId, roleDeniedId] } } });
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: { in: [roleAllowedId, roleDeniedId] } },
+    });
+    await prisma.role.deleteMany({
+      where: { id: { in: [roleAllowedId, roleDeniedId] } },
+    });
     await prisma.appointment.deleteMany({ where: { companyId } });
     await prisma.vehicle.deleteMany({ where: { id: vehicleId || undefined } });
     await prisma.service.deleteMany({ where: { id: serviceId || undefined } });
@@ -128,12 +174,16 @@ describe("RBAC - appointments:read", () => {
   });
 
   it("permite GET /api/appointments com appointments:read", async () => {
-    const res = await request(app).get("/api/appointments").set("Authorization", `Bearer ${tokenAllowed}`);
+    const res = await request(app)
+      .get("/api/appointments")
+      .set("Authorization", `Bearer ${tokenAllowed}`);
     expect(res.status).toBe(200);
   });
 
   it("nega GET /api/appointments sem appointments:read", async () => {
-    const res = await request(app).get("/api/appointments").set("Authorization", `Bearer ${tokenDenied}`);
+    const res = await request(app)
+      .get("/api/appointments")
+      .set("Authorization", `Bearer ${tokenDenied}`);
     expect(res.status).toBe(403);
   });
 });

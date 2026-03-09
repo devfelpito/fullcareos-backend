@@ -12,6 +12,7 @@ datasource db {
 //////////////////////
 model Company {
   id            String   @id @default(uuid())
+  slug          String   @unique @default(uuid())
   name          String
   cnpj          String?
   email         String
@@ -29,6 +30,7 @@ model Company {
   appointments  Appointment[]
   sales         Sale[]
   expenses      Expense[]
+  customerAccounts CustomerAccount[]
 }
 
 //////////////////////
@@ -41,6 +43,10 @@ model User {
   name        String
   email       String   @unique
   password    String
+  emailVerifiedAt    DateTime?
+  verificationToken  String?
+  resetToken         String?
+  resetTokenExpiresAt DateTime?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
 
@@ -112,6 +118,26 @@ model Client {
   vehicles  Vehicle[]
   appointments Appointment[]
   sales     Sale[]
+  customerAccount CustomerAccount?
+}
+
+model CustomerAccount {
+  id                 String    @id @default(uuid())
+  companyId          String
+  clientId           String    @unique
+  email              String
+  password           String
+  emailVerifiedAt    DateTime?
+  verificationToken  String?
+  resetToken         String?
+  resetTokenExpiresAt DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  company            Company  @relation(fields: [companyId], references: [id])
+  client             Client   @relation(fields: [clientId], references: [id])
+
+  @@unique([companyId, email])
 }
 
 //////////////////////
@@ -136,6 +162,7 @@ model Vehicle {
 model Service {
   id        String   @id @default(uuid())
   name      String
+  category  String   @default("geral")
   price     Float
   duration  Int       // duração em minutos
   companyId String
@@ -162,6 +189,8 @@ model Appointment {
   client      Client   @relation(fields: [clientId], references: [id])
   vehicle     Vehicle? @relation(fields: [vehicleId], references: [id])
   service     Service  @relation(fields: [serviceId], references: [id])
+
+  @@unique([companyId, scheduledAt])
 }
 
 

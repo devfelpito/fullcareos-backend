@@ -18,6 +18,7 @@ router.get("/", (0, permission_1.requirePermission)("services:read"), async (req
         const tenantId = req.tenantId;
         const services = await prisma_1.prisma.service.findMany({
             where: { companyId: tenantId },
+            orderBy: [{ category: "asc" }, { name: "asc" }],
         });
         res.json(services);
     }
@@ -28,9 +29,9 @@ router.get("/", (0, permission_1.requirePermission)("services:read"), async (req
 router.post("/", (0, permission_1.requirePermission)("services:write"), (0, validate_1.validateBody)(schemas_1.createServiceSchema), async (req, res, next) => {
     try {
         const tenantId = req.tenantId;
-        const { name, price, duration } = req.body;
+        const { category, name, price, duration } = req.body;
         const service = await prisma_1.prisma.service.create({
-            data: { name, price, duration, companyId: tenantId },
+            data: { category: category || "geral", name, price, duration, companyId: tenantId },
         });
         res.status(201).json(service);
     }

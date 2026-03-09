@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+﻿import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
@@ -13,7 +13,7 @@ async function main() {
       cnpj: "00.000.000/0000-00",
       email: "contato@fullcareos.com",
       phone: "11999999999",
-      address: "Rua Teste, 123, São Paulo, SP",
+      address: "Rua Teste, 123, SÃ£o Paulo, SP",
       plan: "trial",
       trialEndsAt: new Date(new Date().setDate(new Date().getDate() + 14)),
     },
@@ -21,10 +21,10 @@ async function main() {
 
   console.log("Empresa criada:", company.name);
 
-  // Criar Cargos padrão
+  // Criar Cargos padrÃ£o
   const roles = [
     { name: "Admin", description: "Acesso total ao sistema" },
-    { name: "Gerente", description: "Gerencia agendamentos e finanças" },
+    { name: "Gerente", description: "Gerencia agendamentos e finanÃ§as" },
     { name: "Operador", description: "Acesso apenas a agenda e clientes" },
   ];
 
@@ -43,7 +43,7 @@ async function main() {
 
   console.log("Cargos criados:", createdRoles.map((r) => r.name).join(", "));
 
-  // Permissões RBAC (read/write por módulo)
+  // PermissÃµes RBAC (read/write por mÃ³dulo)
   const permissionNames = [
     "clients:read",
     "clients:write",
@@ -69,7 +69,7 @@ async function main() {
     permissions.push(permission);
   }
 
-  // Criar Admin padrão (idempotente com upsert)
+  // Criar Admin padrÃ£o (idempotente com upsert)
   const passwordHash = await bcrypt.hash("Fullcare123", 10);
   const adminRoleId = createdRoles.find((r) => r.name === "Admin")!.id;
 
@@ -79,6 +79,7 @@ async function main() {
       name: "Administrador FullcareOS",
       password: passwordHash,
       active: true,
+      emailVerifiedAt: new Date(),
       companyId: company.id,
       roleId: adminRoleId,
     },
@@ -87,12 +88,13 @@ async function main() {
       email: "admin@fullcareos.com",
       password: passwordHash,
       active: true,
+      emailVerifiedAt: new Date(),
       companyId: company.id,
       roleId: adminRoleId,
     },
   });
 
-  // Vincular todas permissões ao cargo Admin (idempotente)
+  // Vincular todas permissÃµes ao cargo Admin (idempotente)
   for (const permission of permissions) {
     await prisma.rolePermission.upsert({
       where: {
@@ -109,8 +111,8 @@ async function main() {
     });
   }
 
-  console.log("Usuário Admin criado/atualizado:", adminUser.email);
-  console.log("Permissões RBAC aplicadas ao Admin:", permissionNames.join(", "));
+  console.log("UsuÃ¡rio Admin criado/atualizado:", adminUser.email);
+  console.log("PermissÃµes RBAC aplicadas ao Admin:", permissionNames.join(", "));
 }
 
 main()
@@ -122,3 +124,4 @@ main()
     await prisma.$disconnect();
     console.log("Seed finalizado!");
   });
+

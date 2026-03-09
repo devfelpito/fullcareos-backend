@@ -7,7 +7,7 @@ describe("Auth validation /api/auth/login", () => {
     await prisma.$disconnect();
   });
 
-  it("deve retornar 400 para payload inválido", async () => {
+  it("deve retornar 400 para payload invalido", async () => {
     const res = await request(app)
       .post("/api/auth/login")
       .send({ email: "email-invalido", password: "" });
