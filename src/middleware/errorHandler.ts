@@ -9,6 +9,8 @@ export default function errorHandler(
 ) {
   if (res.headersSent) return;
 
+  console.error("[error]", err);
+
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     switch (err.code) {
       case "P2025":
