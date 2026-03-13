@@ -1,4 +1,3 @@
-Ôªøimport nodemailer from "nodemailer";
 import { getEnv } from "../config/env";
 
 type SendEmailInput = {
@@ -7,42 +6,43 @@ type SendEmailInput = {
   html: string;
 };
 
-function buildTransport() {
-  const env = getEnv();
-  if (!env.SMTP_HOST || !env.SMTP_PORT || !env.SMTP_USER || !env.SMTP_PASS || !env.SMTP_FROM) {
-    return null;
-  }
-
-  return nodemailer.createTransport({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    secure: env.SMTP_PORT === 465,
-    auth: {
-      user: env.SMTP_USER,
-      pass: env.SMTP_PASS,
-    },
-  });
-}
-
 export async function sendEmail({ to, subject, html }: SendEmailInput) {
   const env = getEnv();
-  const transport = buildTransport();
-
-  if (!transport) {
+  if (!env.RESEND_API_KEY || !env.SMTP_FROM) {
     if (env.NODE_ENV === "production") {
-      throw new Error("SMTP n√£o configurado em produ√ß√£o");
+      throw new Error("Resend n„o configurado em produÁ„o");
     }
 
     console.log("[email:mock]", { to, subject, html });
     return;
   }
 
-  await transport.sendMail({
-    from: env.SMTP_FROM,
-    to,
-    subject,
-    html,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: env.SMTP_FROM,
+        to,
+        subject,
+        html,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(`Falha ao enviar e-mail via Resend: ${response.status} ${detail}`);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function sendVerificationEmail(params: {
@@ -64,7 +64,7 @@ export async function sendVerificationEmail(params: {
   await sendEmail({
     to: params.to,
     subject: "Verifique seu e-mail",
-    html: `<p>Ol√°,</p><p>Clique no link para verificar seu e-mail:</p><p><a href="${link}">${link}</a></p>`,
+    html: `<p>Ol·,</p><p>Clique no link para verificar seu e-mail:</p><p><a href="${link}">${link}</a></p>`,
   });
 }
 
@@ -86,7 +86,7 @@ export async function sendResetPasswordEmail(params: {
 
   await sendEmail({
     to: params.to,
-    subject: "Redefini√ß√£o de senha",
-    html: `<p>Ol√°,</p><p>Clique no link para redefinir sua senha:</p><p><a href="${link}">${link}</a></p>`,
+    subject: "RedefiniÁ„o de senha",
+    html: `<p>Ol·,</p><p>Clique no link para redefinir sua senha:</p><p><a href="${link}">${link}</a></p>`,
   });
 }

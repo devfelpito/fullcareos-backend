@@ -12,6 +12,7 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().email().optional(),
+  RESEND_API_KEY: z.string().optional(),
   BILLING_PROVIDER: z.enum(["mock", "stripe"]).default("mock"),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_PRICE_MONTHLY: z.string().optional(),
